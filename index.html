@@ -438,7 +438,9 @@
             const isFull = membersCount >= hangout.maxParticipants;
             const isHost = hangout.hostId === userId;
             
-            const chatButton = isMember ? 
+            const isChatActive = isMember;
+
+            const chatButton = isChatActive ? 
                 `<button onclick="openChatModal(${JSON.stringify(hangout).replace(/"/g, '&quot;')})" 
                          class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-full shadow-lg transition duration-200 ml-4">
                     Chat
