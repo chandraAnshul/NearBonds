@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NearBonds - Find Your Tribe</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8;
+            color: #1a202c;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 800px;
+            margin: auto;
+            padding: 1rem;
+        }
+        .card {
+            background-color: white;
+            border-radius: 1rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05), 0 10px 15px rgba(0, 0, 0, 0.1);
+        }
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            width: 90%;
+            max-width: 450px;
+        }
+        .chat-modal-content {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            width: 90%;
+            max-width: 600px;
+            height: 80vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .chat-messages {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 1rem;
+            background-color: #e2e8f0;
+            border-radius: 0.5rem;
+        }
+        .chat-message {
+            background-color: #cbd5e1;
+            padding: 0.5rem;
+            border-radius: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+        .my-message {
+            background-color: #a3c1f1;
+            text-align: right;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex flex-col items-center">
+
+    <div class="container py-8">
+        <!-- Header Section -->
+        <div class="text-center mb-8">
+            <h1 class="text-4xl md:text-5xl font-extrabold text-blue-800">NearBonds</h1>
+            <p class="mt-2 text-gray-600">Find and join your local community.</p>
+            <div id="userIdDisplay" class="mt-4 p-2 text-xs bg-gray-200 text-gray-700 rounded-md break-words">
+                Loading user...
+            </div>
+            <div class="mt-4">
+                <button onclick="openProfileModal()" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-6 rounded-full transition duration-200">
+                    My Profile
+                </button>
+            </div>
+        </div>
+
+        <!-- Create Hangout Button -->
+        <div class="text-center mb-6">
+            <button onclick="openCreateModal()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-full shadow-lg transition duration-200">
+                Create a New Hangout
+            </button>
+        </div>
+
+        <!-- Hangouts List -->
+        <div id="hangoutsContainer" class="space-y-4">
+            <!-- Hangout cards will be dynamically inserted here -->
+            <div id="loading" class="text-center text-gray-500">Loading hangouts...</div>
+        </div>
+
+        <!-- No Hangouts Message -->
+        <div id="noHangoutsMessage" class="hidden text-center text-gray-500 mt-8">
+            <p>No hangouts found. Be the first to create one!</p>
+        </div>
+    </div>
+
+    <!-- Create Hangout Modal -->
+    <div id="createModal" class="modal-overlay">
+        <div class="modal text-center relative">
+            <button onclick="closeModal()" class="absolute top-4 right-4 text-2xl font-bold text-gray-500 hover:text-gray-800">&times;</button>
+            <h3 class="text-2xl font-bold text-blue-800 mb-4">Create a New Hangout</h3>
+            <form id="createHangoutForm">
+                <select id="hangoutName" required class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4">
+                    <option value="" disabled selected>Select a hangout type</option>
+                    <option value="Evening Chai Circle">Evening Chai Circle</option>
+                    <option value="Board Game & Chill">Board Game & Chill</option>
+                    <option value="Pet + Coffee Meetups">Pet + Coffee Meetups</option>
+                    <option value="More coming soon" disabled>More coming soon</option>
+                </select>
+                <input type="number" id="participantCount" min="3" max="6" placeholder="Number of participants (3-6)" required class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4">
+                <textarea id="hangoutDescription" rows="3" placeholder="Write a fun description..." class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4"></textarea>
+                <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg shadow-lg transition duration-200">
+                    Create Hangout
+                </button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Profile Modal -->
+    <div id="profileModal" class="modal-overlay">
+        <div class="modal text-center relative">
+            <button onclick="closeModal()" class="absolute top-4 right-4 text-2xl font-bold text-gray-500 hover:text-gray-800">&times;</button>
+            <h3 class="text-2xl font-bold text-blue-800 mb-4">My Profile</h3>
+            <form id="profileForm">
+                <input type="text" id="nicknameInput" placeholder="Enter your nickname" required class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4">
+                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg shadow-lg transition duration-200">
+                    Save Profile
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Chat Modal -->
+    <div id="chatModal" class="modal-overlay">
+        <div class="chat-modal-content relative">
+            <button onclick="closeModal()" class="absolute top-4 right-4 text-2xl font-bold text-gray-500 hover:text-gray-800">&times;</button>
+            <h3 id="chatTitle" class="text-2xl font-bold text-blue-800 mb-4"></h3>
+            <div id="chatMessages" class="chat-messages mb-4"></div>
+            <form id="chatForm">
+                <input type="text" id="chatMessageInput" placeholder="Type a message..." required class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 mb-2">
+                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg shadow-lg transition duration-200">
+                    Send
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, onSnapshot, doc, setDoc, updateDoc, arrayUnion, addDoc, serverTimestamp, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        
+        // --- Firebase Configuration & Initialization ---
+        // These global variables are provided by the canvas environment.
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        let db, auth, userId, userNickname;
+        const app = initializeApp(firebaseConfig);
+        db = getFirestore(app);
+        auth = getAuth(app);
+
+        // --- UI Elements ---
+        const userIdDisplay = document.getElementById('userIdDisplay');
+        const hangoutsContainer = document.getElementById('hangoutsContainer');
+        const loadingSpinner = document.getElementById('loading');
+        const noHangoutsMessage = document.getElementById('noHangoutsMessage');
+        const createModal = document.getElementById('createModal');
+        const profileModal = document.getElementById('profileModal');
+        const chatModal = document.getElementById('chatModal');
+        const createHangoutForm = document.getElementById('createHangoutForm');
+        const profileForm = document.getElementById('profileForm');
+        const hangoutNameInput = document.getElementById('hangoutName');
+        const participantCountInput = document.getElementById('participantCount');
+        const hangoutDescriptionInput = document.getElementById('hangoutDescription');
+        const nicknameInput = document.getElementById('nicknameInput');
+        const chatTitle = document.getElementById('chatTitle');
+        const chatMessagesDiv = document.getElementById('chatMessages');
+        const chatForm = document.getElementById('chatForm');
+        const chatMessageInput = document.getElementById('chatMessageInput');
+
+        let currentChatUnsubscribe;
+
+        // --- Authentication Logic ---
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                userId = user.uid;
+            } else if (initialAuthToken) {
+                try {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                    userId = auth.currentUser.uid;
+                } catch (error) {
+                    console.error("Error signing in with custom token:", error);
+                    await signInAnonymously(auth);
+                    userId = auth.currentUser.uid;
+                }
+            } else {
+                await signInAnonymously(auth);
+                userId = auth.currentUser.uid;
+            }
+            if (userId) {
+                await fetchUserProfile();
+                // Now that we have a user and their profile, start listening for hangouts
+                listenForHangouts();
+            }
+        });
+
+        async function fetchUserProfile() {
+            try {
+                const profileDocRef = doc(db, `artifacts/${appId}/public/data/profiles`, userId);
+                const profileSnap = await getDoc(profileDocRef);
+                if (profileSnap.exists()) {
+                    userNickname = profileSnap.data().nickname;
+                    userIdDisplay.textContent = `Welcome, ${userNickname}!`;
+                } else {
+                    userNickname = userId.substring(0, 8); // Use a truncated ID as a fallback
+                    userIdDisplay.textContent = `Welcome, ${userNickname}! Your User ID: ${userId}`;
+                }
+            } catch (e) {
+                console.error("Error fetching user profile:", e);
+                userNickname = userId.substring(0, 8); // Fallback on error
+                userIdDisplay.textContent = `Welcome, ${userNickname}! Your User ID: ${userId}`;
+            }
+        }
+
+        // --- Modal Functions ---
+        window.openCreateModal = function() {
+            createModal.style.display = 'flex';
+        }
+
+        window.openProfileModal = function() {
+            nicknameInput.value = userNickname !== userId.substring(0,8) ? userNickname : '';
+            profileModal.style.display = 'flex';
+        }
+
+        window.openChatModal = function(hangout) {
+            if (currentChatUnsubscribe) {
+                currentChatUnsubscribe();
+            }
+            chatTitle.textContent = hangout.name;
+            chatMessagesDiv.innerHTML = '';
+            chatModal.style.display = 'flex';
+            
+            const chatCollection = collection(db, `artifacts/${appId}/public/data/hangouts/${hangout.id}/chat`);
+            currentChatUnsubscribe = onSnapshot(chatCollection, (snapshot) => {
+                chatMessagesDiv.innerHTML = '';
+                snapshot.docs.forEach(doc => {
+                    const message = doc.data();
+                    const messageDiv = document.createElement('div');
+                    const messageSender = message.nickname || message.userId.substring(0, 8);
+                    messageDiv.className = `chat-message ${message.userId === userId ? 'bg-blue-300 ml-auto' : 'bg-gray-300'} p-2 rounded-lg mb-2 max-w-[80%]`;
+                    messageDiv.innerHTML = `<span class="font-bold text-xs">${message.userId === userId ? 'You' : messageSender}:</span><br>${message.text}`;
+                    chatMessagesDiv.appendChild(messageDiv);
+                });
+                chatMessagesDiv.scrollTop = chatMessagesDiv.scrollHeight;
+            }, (error) => {
+                console.error("Error listening to chat messages:", error);
+            });
+
+            chatForm.onsubmit = async (event) => {
+                event.preventDefault();
+                const text = chatMessageInput.value.trim();
+                if (!text) return;
+                
+                try {
+                    await addDoc(chatCollection, {
+                        userId: userId,
+                        nickname: userNickname,
+                        text: text,
+                        timestamp: serverTimestamp()
+                    });
+                    chatMessageInput.value = '';
+                } catch (e) {
+                    console.error("Error sending message: ", e);
+                }
+            };
+        }
+
+        window.closeModal = function() {
+            createModal.style.display = 'none';
+            chatModal.style.display = 'none';
+            profileModal.style.display = 'none';
+            if (currentChatUnsubscribe) {
+                currentChatUnsubscribe();
+            }
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            if (event.target == createModal || event.target == chatModal || event.target == profileModal) {
+                closeModal();
+            }
+        }
+
+        // --- Firestore Real-time Listener ---
+        function listenForHangouts() {
+            const hangoutsCollection = collection(db, `artifacts/${appId}/public/data/hangouts`);
+            onSnapshot(hangoutsCollection, (snapshot) => {
+                hangoutsContainer.innerHTML = ''; // Clear existing hangouts
+                loadingSpinner.classList.add('hidden');
+                const hangouts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+                if (hangouts.length === 0) {
+                    noHangoutsMessage.classList.remove('hidden');
+                } else {
+                    noHangoutsMessage.classList.add('hidden');
+                    hangouts.forEach(hangout => {
+                        const card = createHangoutCard(hangout);
+                        hangoutsContainer.appendChild(card);
+                    });
+                }
+            }, (error) => {
+                console.error("Error listening to hangouts:", error);
+                loadingSpinner.textContent = 'Error loading hangouts.';
+            });
+        }
+
+        // --- UI Rendering Functions ---
+        function createHangoutCard(hangout) {
+            const card = document.createElement('div');
+            card.className = 'card p-6 flex flex-col md:flex-row md:items-center justify-between';
+            
+            const membersCount = hangout.members ? hangout.members.length : 0;
+            const isMember = hangout.members && hangout.members.includes(userId);
+            const isFull = membersCount >= hangout.maxParticipants;
+            
+            // Check if chat is enabled (48 hours before creation date)
+            const MS_IN_48_HOURS = 48 * 60 * 60 * 1000;
+            const isChatEnabled = (Date.now() - hangout.createdAt) >= MS_IN_48_HOURS;
+            
+            let joinButton;
+            if (isMember) {
+                joinButton = `<button class="mt-4 md:mt-0 bg-gray-500 text-white font-bold py-2 px-6 rounded-full opacity-70 cursor-not-allowed">
+                            Joined
+                          </button>`;
+            } else if (isFull) {
+                 joinButton = `<button class="mt-4 md:mt-0 bg-red-500 text-white font-bold py-2 px-6 rounded-full opacity-70 cursor-not-allowed">
+                            Full
+                          </button>`;
+            } else {
+                joinButton = `<button onclick="joinHangout('${hangout.id}')" class="mt-4 md:mt-0 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-full shadow-lg transition duration-200">
+                            Join
+                          </button>`;
+            }
+
+            const chatButton = isMember && isChatEnabled ? 
+                `<button onclick="openChatModal(${JSON.stringify(hangout).replace(/"/g, '&quot;')})" 
+                         class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-full shadow-lg transition duration-200 ml-4">
+                    Chat
+                </button>` : '';
+
+            card.innerHTML = `
+                <div>
+                    <h2 class="text-2xl font-semibold text-gray-800">${hangout.name}</h2>
+                    <p class="mt-1 text-gray-600">
+                      ${hangout.description}
+                    </p>
+                    <p class="mt-1 text-sm text-gray-500">
+                      Members: ${membersCount} / ${hangout.maxParticipants}
+                    </p>
+                    <p class="mt-1 text-xs text-gray-400 break-words">
+                        IDs: ${hangout.members.join(', ')}
+                    </p>
+                </div>
+                <div class="flex items-center">
+                    ${joinButton}
+                    ${chatButton}
+                </div>
+            `;
+            return card;
+        }
+
+        // --- Firestore Write Operations ---
+        createHangoutForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const hangoutName = hangoutNameInput.value.trim();
+            const participantCount = parseInt(participantCountInput.value, 10);
+            const hangoutDescription = hangoutDescriptionInput.value.trim();
+            
+            if (!hangoutName || !participantCount || participantCount < 3 || participantCount > 6) return;
+            
+            closeModal();
+            try {
+                const newHangoutDoc = doc(collection(db, `artifacts/${appId}/public/data/hangouts`));
+                await setDoc(newHangoutDoc, {
+                    name: hangoutName,
+                    description: hangoutDescription,
+                    members: [userId],
+                    maxParticipants: participantCount,
+                    createdAt: Date.now()
+                });
+                hangoutNameInput.value = ''; // Clear input
+            } catch (e) {
+                console.error("Error adding document: ", e);
+            }
+        });
+        
+        profileForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const nickname = nicknameInput.value.trim();
+            if (!nickname) return;
+            
+            try {
+                const profileDocRef = doc(db, `artifacts/${appId}/public/data/profiles`, userId);
+                await setDoc(profileDocRef, { nickname });
+                userNickname = nickname;
+                userIdDisplay.textContent = `Welcome, ${userNickname}!`;
+                closeModal();
+            } catch (e) {
+                console.error("Error saving profile:", e);
+            }
+        });
+
+        window.joinHangout = async function(hangoutId) {
+            const hangoutDocRef = doc(db, `artifacts/${appId}/public/data/hangouts`, hangoutId);
+            try {
+                await updateDoc(hangoutDocRef, {
+                    members: arrayUnion(userId)
+                });
+            } catch (e) {
+                console.error("Error joining hangout: ", e);
+            }
+        }
+    </script>
+</body>
+</html>
