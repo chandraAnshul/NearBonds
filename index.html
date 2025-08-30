@@ -165,17 +165,22 @@
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, onSnapshot, doc, setDoc, updateDoc, arrayUnion, addDoc, serverTimestamp, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
-        // --- Firebase Configuration & Initialization ---
-        // These global variables are provided by the canvas environment.
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        // --- PASTE YOUR FIREBASE CONFIG HERE ---
+        // You can get this JSON object from your Firebase project settings.
+        const firebaseConfig = {
+            apiKey: "AIzaSyBfcdj83TJxGPdZdVG5pRpP8lw0P1SIhY8",
+            authDomain: "nearbonds.firebaseapp.com",
+            projectId: "nearbonds",
+            storageBucket: "nearbonds.firebasestorage.app",
+            messagingSenderId: "1053786657821",
+            appId: "1:1053786657821:web:6725758a48d4e4251322f4"
+        };
+        
+        // This variable is provided by the canvas environment.
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
         let db, auth, userId, userNickname;
-        const app = initializeApp(firebaseConfig);
-        db = getFirestore(app);
-        auth = getAuth(app);
-
+        
         // --- UI Elements ---
         const userIdDisplay = document.getElementById('userIdDisplay');
         const hangoutsContainer = document.getElementById('hangoutsContainer');
@@ -197,33 +202,41 @@
 
         let currentChatUnsubscribe;
 
-        // --- Authentication Logic ---
-        onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                userId = user.uid;
-            } else if (initialAuthToken) {
-                try {
-                    await signInWithCustomToken(auth, initialAuthToken);
-                    userId = auth.currentUser.uid;
-                } catch (error) {
-                    console.error("Error signing in with custom token:", error);
-                    await signInAnonymously(auth);
-                    userId = auth.currentUser.uid;
-                }
-            } else {
-                await signInAnonymously(auth);
-                userId = auth.currentUser.uid;
+        // --- Firebase Initialization and Authentication ---
+        function initFirebaseAndAuth() {
+            try {
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        await fetchUserProfile();
+                        listenForHangouts();
+                    } else {
+                        try {
+                            await signInAnonymously(auth);
+                        } catch (error) {
+                            console.error("Error signing in anonymously:", error);
+                            userIdDisplay.textContent = 'Auth failed. Please check Firebase config & Anonymous Auth settings.';
+                            loadingSpinner.classList.add('hidden');
+                        }
+                    }
+                });
+            } catch (e) {
+                console.error("Error initializing Firebase:", e);
+                userIdDisplay.textContent = 'Initialization failed. Check your Firebase config.';
+                loadingSpinner.classList.add('hidden');
             }
-            if (userId) {
-                await fetchUserProfile();
-                // Now that we have a user and their profile, start listening for hangouts
-                listenForHangouts();
-            }
-        });
+        }
+        
+        // Initialize Firebase on page load
+        initFirebaseAndAuth();
 
         async function fetchUserProfile() {
             try {
-                const profileDocRef = doc(db, `artifacts/${appId}/public/data/profiles`, userId);
+                const profileDocRef = doc(db, `artifacts/${firebaseConfig.appId}/public/data/profiles`, userId);
                 const profileSnap = await getDoc(profileDocRef);
                 if (profileSnap.exists()) {
                     userNickname = profileSnap.data().nickname;
@@ -257,7 +270,7 @@
             chatMessagesDiv.innerHTML = '';
             chatModal.style.display = 'flex';
             
-            const chatCollection = collection(db, `artifacts/${appId}/public/data/hangouts/${hangout.id}/chat`);
+            const chatCollection = collection(db, `artifacts/${firebaseConfig.appId}/public/data/hangouts/${hangout.id}/chat`);
             currentChatUnsubscribe = onSnapshot(chatCollection, (snapshot) => {
                 chatMessagesDiv.innerHTML = '';
                 snapshot.docs.forEach(doc => {
@@ -310,7 +323,7 @@
 
         // --- Firestore Real-time Listener ---
         function listenForHangouts() {
-            const hangoutsCollection = collection(db, `artifacts/${appId}/public/data/hangouts`);
+            const hangoutsCollection = collection(db, `artifacts/${firebaseConfig.appId}/public/data/hangouts`);
             onSnapshot(hangoutsCollection, (snapshot) => {
                 hangoutsContainer.innerHTML = ''; // Clear existing hangouts
                 loadingSpinner.classList.add('hidden');
@@ -397,7 +410,7 @@
             
             closeModal();
             try {
-                const newHangoutDoc = doc(collection(db, `artifacts/${appId}/public/data/hangouts`));
+                const newHangoutDoc = doc(collection(db, `artifacts/${firebaseConfig.appId}/public/data/hangouts`));
                 await setDoc(newHangoutDoc, {
                     name: hangoutName,
                     description: hangoutDescription,
@@ -417,7 +430,7 @@
             if (!nickname) return;
             
             try {
-                const profileDocRef = doc(db, `artifacts/${appId}/public/data/profiles`, userId);
+                const profileDocRef = doc(db, `artifacts/${firebaseConfig.appId}/public/data/profiles`, userId);
                 await setDoc(profileDocRef, { nickname });
                 userNickname = nickname;
                 userIdDisplay.textContent = `Welcome, ${userNickname}!`;
@@ -428,7 +441,7 @@
         });
 
         window.joinHangout = async function(hangoutId) {
-            const hangoutDocRef = doc(db, `artifacts/${appId}/public/data/hangouts`, hangoutId);
+            const hangoutDocRef = doc(db, `artifacts/${firebaseConfig.appId}/public/data/hangouts`, hangoutId);
             try {
                 await updateDoc(hangoutDocRef, {
                     members: arrayUnion(userId)
